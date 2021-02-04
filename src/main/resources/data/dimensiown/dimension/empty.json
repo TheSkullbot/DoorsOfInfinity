@@ -1,0 +1,16 @@
+{
+  "type"      : "dimensiown:empty_type",
+  "generator" : {
+    "type"     : "minecraft:flat",
+    "seed"     : 0,
+    "settings" : {
+      "biome"      : "minecraft:the_void",
+      "lakes"      : false,
+      "features"   : false,
+      "layers"     : [ ],
+      "structures" : {
+        "structures" : { }
+      }
+    }
+  }
+}

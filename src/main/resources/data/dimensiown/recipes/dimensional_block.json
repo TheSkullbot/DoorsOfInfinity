@@ -1,0 +1,20 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		" O ",
+		"OEO",
+		" O "
+	],
+	"key": {
+		"O": {
+			"item": "minecraft:netherite_block"
+		},
+		"E": {
+			"item": "minecraft:ender_eye"
+		}
+	},
+	"result": {
+		"item": "dimensiown:dimensional_block",
+		"count": 4
+	}
+}

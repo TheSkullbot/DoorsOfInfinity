@@ -1,0 +1,26 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"IOI",
+		"EDE",
+		"IOI"
+	],
+	"key": {
+		"I": {
+			"item": "dimensiown:dimensional_block"
+		},
+		"D": {
+			"item": "minecraft:iron_door"
+		},
+		"O": {
+			"item": "minecraft:ender_eye"
+		},
+		"E": {
+			"item": "minecraft:diamond"
+		}
+	},
+	"result": {
+		"item": "dimensiown:dimensional_door",
+		"count": 1
+	}
+}

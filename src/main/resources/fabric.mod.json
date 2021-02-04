@@ -1,36 +1,30 @@
 {
-  "schemaVersion": 1,
-  "id": "doorsofinfinity",
-  "version": "${version}",
-
-  "name": "Doors of Infinity",
-  "description": "This mod adds small personal dimensions that can be accessed through a magic door!",
-  "authors": [
-    "benfah"
+  "schemaVersion" : 1,
+  "id"            : "dimensiown",
+  "version"       : "${version}",
+  "name"          : "DimensiOwn",
+  "description"   : "This mod adds personal dimensions that can be accessed through a dimensional door !",
+  "authors"       : [
+    "benfah",
+    "Skullbot"
   ],
-  "license": "CC0-1.0",
-  "icon": "assets/doorsofinfinity/icon.png",
-
-  "environment": "*",
-  "entrypoints": {
-    "main": [
-      "me.benfah.doorsofinfinity.DOFMod"
-    ],
-    "client": [
-      "me.benfah.doorsofinfinity.DOFModClient"
-    ],
-    "modmenu": [ "me.benfah.doorsofinfinity.plugin.ModMenuPlugin" ]
+  "license"       : "CC0-1.0",
+  "icon"          : "assets/dimensiown/icon.png",
+  "environment"   : "*",
+  "entrypoints"   : {
+    "main" : [
+      "skullbot.dimensiown.Dimensiown"
+    ]
   },
-  "mixins": [
-    "doorsofinfinity.mixins.json"
+  "mixins"        : [
+    "dimensiown.mixins.json"
   ],
-
-  "depends": {
-    "fabricloader": ">=0.7.4",
-    "fabric": "*",
-    "minecraft": "1.15.x"
+  "depends"       : {
+    "fabricloader" : ">=0.11.0",
+    "fabric"       : "*",
+    "minecraft"    : "1.16.4"
   },
-  "recommended": {
-    "immersive_portals": ">=0.25"
+  "recommended"   : {
+    "immersive_portals" : ">=0.65"
   }
 }

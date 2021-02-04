@@ -1,0 +1,11 @@
+{
+  "itemGroup.dimensiown.items"                     : "DimensiOwn",
+  "text.dimensiown.ip_not_present"                 : "Immersive Portals is required !",
+  "text.dimensiown.dimensional_offset"             : "Dimension ID : %s",
+  "text.dimensiown.dimensional_upgrades"           : "Upgrades : %s",
+  "item.dimensiown.dimensional_enhancer"           : "Dimensional Enhancer",
+  "block.dimensiown.dimensional_door"              : "Dimensional Door",
+  "block.dimensiown.dimensional_block"             : "Dimensional Block",
+  "block.dimensiown.dimensional_door_unbreakable"  : "Dimensional Door",
+  "block.dimensiown.dimensional_block_unbreakable" : "Dimensional Block"
+}

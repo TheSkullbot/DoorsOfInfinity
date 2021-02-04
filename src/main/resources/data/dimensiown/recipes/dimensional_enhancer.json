@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "DPD",
+    "IEI",
+    "DPD"
+  ],
+  "key": {
+    "D": {
+      "item": "dimensiown:dimensional_block"
+    },
+    "E": {
+      "item": "minecraft:ender_eye"
+    },
+    "I": {
+      "item": "minecraft:diamond"
+    },
+    "P": {
+      "item": "minecraft:prismarine_shard"
+    }
+  },
+  "result": {
+    "item": "dimensiown:dimensional_shard",
+    "count": 1
+  }
+}

@@ -1,0 +1,7 @@
+{
+    "parent": "block/door_bottom",
+    "textures": {
+        "bottom": "dimensiown:block/dimensional_door_bottom",
+        "top": "dimensiown:block/dimensional_door_top"
+    }
+}
