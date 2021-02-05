@@ -14,6 +14,9 @@
   "entrypoints"   : {
     "main" : [
       "skullbot.dimensiown.Dimensiown"
+    ],
+    "client": [
+      "skullbot.dimensiown.DimensiownClient"
     ]
   },
   "mixins"        : [
@@ -23,8 +26,5 @@
     "fabricloader" : ">=0.11.0",
     "fabric"       : "*",
     "minecraft"    : "1.16.4"
-  },
-  "recommended"   : {
-    "immersive_portals" : ">=0.65"
   }
 }

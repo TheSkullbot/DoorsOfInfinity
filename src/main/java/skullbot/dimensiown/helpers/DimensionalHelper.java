@@ -17,33 +17,33 @@ import static skullbot.dimensiown.registry.Blocks.DIM_BLOCK_UNBREAKABLE;
 
 public class DimensionalHelper
 {
+  private static final int SPACING                 = 500;
   private static final int START_HEIGHT            = 2;
   private static final int INNER_SIZE              = 5;
-  private static final int WALL_THICKNESS          = 2;
+  private static final int WALL_THICKNESS          = 1;
   private static final int UPGRADE_SIZE_MULTIPLIER = 2;
 
   public static PersonalDimension getEmptyPersonalDimension()
   {
-    ServerWorld infinityDim = Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD );
-    BlockPos    basePos     = new BlockPos( 0, START_HEIGHT, 0 );
-    int         offset      = 0;
+    ServerWorld world   = Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD );
+    BlockPos    basePos = new BlockPos( 0, START_HEIGHT, 0 );
+    int         offset  = 0;
 
-    while( !infinityDim.getBlockState( basePos.add( offset * 200, 200, 0 ) ).isAir() )
-    {
+    while( !world.getBlockState( basePos.add( offset * SPACING, SPACING, 0 ) ).isAir() )
       offset++;
-    }
-    return new PersonalDimension( offset, infinityDim );
+
+    return new PersonalDimension( offset, world );
   }
 
   public static PersonalDimension getPersonalDimension( int id, int upgrades )
   {
-    ServerWorld infinityDim = Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD );
-    return new PersonalDimension( id, upgrades, infinityDim );
+    ServerWorld world = Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD );
+    return new PersonalDimension( id, upgrades, world );
   }
 
   public PersonalDimension getPersonalDimensionAt( BlockPos pos )
   {
-    return new PersonalDimension( pos.getX() / 200, Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD ) );
+    return new PersonalDimension( pos.getX() / SPACING, Dimensiown.SERVER.getWorld( Dimensions.DIMENSION_WORLD ) );
   }
 
   public static ServerWorld getDimension()
@@ -53,8 +53,7 @@ public class DimensionalHelper
 
   public static class PersonalDimension
   {
-
-    private int         dimId;
+    private int         dimOffset;
     private ServerWorld world;
     private int         upgrades = 0;
 
@@ -66,18 +65,18 @@ public class DimensionalHelper
 
     public PersonalDimension( int dimOffset, ServerWorld world )
     {
-      this.dimId = dimOffset;
-      this.world = world;
+      this.dimOffset = dimOffset;
+      this.world       = world;
     }
 
     public Vec3d getBasePosition()
     {
-      return new Vec3d( 200 * dimId, START_HEIGHT, 0 );
+      return new Vec3d( SPACING * dimOffset, START_HEIGHT, 0 );
     }
 
     public int getDimensionOffset()
     {
-      return dimId;
+      return dimOffset;
     }
 
     public Vec3d getPlayerPosCentered()
@@ -98,16 +97,14 @@ public class DimensionalHelper
     public boolean upgrade()
     {
       if( this.upgrades >= UPGRADE_SIZE_MULTIPLIER )
-      {
         return false;
-      }
+
       int prevInnerSize = getInnerSize();
 
       DimensionalDoorBlockEntity linkedBlockEntity = getBlockEntity().getSyncEntity();
 
       linkedBlockEntity.deleteLocalPortal();
       linkedBlockEntity.deleteSyncPortal();
-
 
       linkedBlockEntity.upgrades++;
       upgrades = linkedBlockEntity.upgrades;
@@ -146,7 +143,6 @@ public class DimensionalHelper
     public void generate()
     {
       generateCube( getBasePosition(), getInnerSize(), WALL_THICKNESS, vec -> DIM_BLOCK_UNBREAKABLE.getDefaultState() );
-
       resetDoor();
     }
 
@@ -159,7 +155,6 @@ public class DimensionalHelper
 
     public void generateCube( Vec3d basePosition, int innerSize, int wallThickness, Function<Vec3i, BlockState> stateFunction )
     {
-
       for( int i = 0; i < innerSize + wallThickness * 2; i++ )
       {
         for( int j = 0; j < innerSize + wallThickness * 2; j++ )

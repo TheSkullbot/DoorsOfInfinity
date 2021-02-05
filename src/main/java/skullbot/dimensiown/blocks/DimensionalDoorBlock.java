@@ -249,6 +249,10 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
 
   public boolean canPlaceAt( BlockState state, WorldView world, BlockPos pos )
   {
+    // Prevent door
+    if( world.toString().equals( Dimensions.DIMENSION_WORLD.getValue().toString() ) )
+      return false;
+
     pos = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
     return topAndBottomMatch( pos, world ) && ( ( sideMatches( pos, world, Direction.NORTH ) && sideMatches( pos, world, Direction.SOUTH ) ) || ( sideMatches( pos, world, Direction.EAST ) && sideMatches( pos, world, Direction.WEST ) ) );
   }

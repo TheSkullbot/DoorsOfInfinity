@@ -42,26 +42,22 @@ public class PortalCreationHelper
     return portal;
   }
 
-  public static DimensionalPortal spawnBreakable( World world, Vec3d pos, double width, double height, Vector3f axisW, Vector3f axisH, RegistryKey<World> dimensionTo, Vec3d dest, boolean teleportable, Quaternion rot, boolean biWay, IntBox transmitterBox, IntBox glassBox, World transmitterWorld )
+  public static DimensionalPortal spawnBreakable( World world, Vec3d pos, double width, double height, Vector3f axisW, Vector3f axisH, RegistryKey<World> dimensionTo, Vec3d dest, boolean teleportable, Quaternion rot, boolean biWay, World transmitterWorld )
   {
     DimensionalPortal portal = new DimensionalPortal( world );
 
-    portal.width          = width;
-    portal.height         = height;
-    portal.axisH          = new Vec3d( axisH );
-    portal.axisW          = new Vec3d( axisW );
-    portal.dimensionTo    = dimensionTo;
-    portal.destination    = dest;
-    portal.teleportable   = teleportable;
-    portal.cullableXEnd   = 0;
-    portal.cullableYEnd   = 0;
-    portal.cullableXStart = 0;
-    portal.cullableYStart = 0;
-
-    portal.transmitterArea  = transmitterBox;
+    portal.width            = width;
+    portal.height           = height;
+    portal.axisH            = new Vec3d( axisH );
+    portal.axisW            = new Vec3d( axisW );
+    portal.dimensionTo      = dimensionTo;
+    portal.destination      = dest;
+    portal.teleportable     = teleportable;
+    portal.cullableXEnd     = 0;
+    portal.cullableYEnd     = 0;
+    portal.cullableXStart   = 0;
+    portal.cullableYStart   = 0;
     portal.transmitterWorld = transmitterWorld;
-
-    portal.glassArea = glassBox;
 
     if( rot != null )
       portal.rotation = rot;

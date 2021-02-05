@@ -28,9 +28,9 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
 
   public DimensionalHelper.PersonalDimension destDimension;
   public BlockPos                            destPosition;
-  public World             destWorld;
-  public Portal            portal;
-  public int               upgrades = 0;
+  public World                               destWorld;
+  public Portal                              portal;
+  public int                                 upgrades = 0;
 
   public DimensionalDoorBlockEntity()
   {
@@ -100,7 +100,7 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
   public void placeSyncedDoor( World destinationWorld, BlockPos destinationPosition )
   {
     BlockState state = getCachedState();
-    destinationWorld.setBlockState( destinationPosition,      Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.LOWER ) );
+    destinationWorld.setBlockState( destinationPosition, Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.LOWER ) );
     destinationWorld.setBlockState( destinationPosition.up(), Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.UPPER ) );
     syncWith( (DimensionalDoorBlockEntity) destinationWorld.getBlockEntity( destinationPosition ) );
     createSyncedPortals();
@@ -152,25 +152,28 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
   @Override
   public void fromTag( BlockState state, CompoundTag tag )
   {
+    super.fromTag( state, tag );
+
     if( tag.contains( "DestinationDimId" ) )
     {
       destWorld    = Dimensiown.SERVER.getWorld( DimId.idToKey( tag.getString( "DestinationDimId" ) ) );
       destPosition = new BlockPos( tag.getInt( "DestinationX" ), tag.getInt( "DestinationY" ), tag.getInt( "DestinationZ" ) );
     }
 
-    super.fromTag( state, tag );
+    if( tag.contains( "DimensionalUpgrades" ) )
+      upgrades = tag.getInt( "DimensionalUpgrades" );
 
-    if( tag.contains( "DimensionalOffset" ) ) upgrades = tag.getInt( "DimensionalOffset" );
-
-    if( tag.contains( "DimensionalOffset" ) ) destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ), upgrades );
-
-    super.fromTag( state, tag );
+    if( tag.contains( "DimensionalOffset" ) )
+      destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ), upgrades );
   }
 
   @Override
   public CompoundTag toTag( CompoundTag tag )
   {
-    if( destDimension != null ) tag.putInt( "DimensionalOffset", destDimension.getDimensionOffset() );
+    super.toTag( tag );
+
+    if( destDimension != null )
+      tag.putInt( "DimensionalOffset", destDimension.getDimensionOffset() );
 
     if( destWorld != null )
     {
@@ -180,8 +183,8 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
       tag.putInt( "DestinationZ", destPosition.getZ() );
     }
 
-    tag.putInt( "DimensionalOffset", upgrades );
+    tag.putInt( "DimensionalUpgrades", upgrades );
 
-    return super.toTag( tag );
+    return tag;
   }
 }
