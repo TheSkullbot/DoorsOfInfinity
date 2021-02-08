@@ -31,6 +31,7 @@ public class Dimensiown implements ModInitializer
 }
 
 // DONE : FIX prevent placing doors inside void dimension
+// TODO : FIX Ownership message spam
 // TODO : FIX dimension upgrade
 // TODO : Store each player dimension information in remote door
 // TODO : Prevent remote door/portal from being destroyed when source door is destroyed

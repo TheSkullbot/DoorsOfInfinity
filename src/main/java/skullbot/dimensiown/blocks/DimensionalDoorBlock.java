@@ -90,7 +90,10 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     // Prevent door placing in same dimension
     if( ctx.getWorld().getRegistryKey().getValue() == blockWorld.getRegistryKey().getValue() )
     {
-      ctx.getPlayer().sendSystemMessage( new LiteralText( "You can't place dimensional doors in your personal dimension."), Util.NIL_UUID );
+      // Prevent double message from both client and server
+      if( !ctx.getWorld().isClient() )
+        ctx.getPlayer().sendSystemMessage( new LiteralText( "You can't place dimensional doors in this dimension."), Util.NIL_UUID );
+
       return null;
     }
 
@@ -106,8 +109,6 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
 
   public void onPlaced( World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack )
   {
-    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
-
     world.setBlockState( pos.up(), state.with( HALF, DoubleBlockHalf.UPPER ), 3 );
 
     if( state.get( HALF ) == DoubleBlockHalf.LOWER && !world.isClient )
@@ -164,13 +165,18 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     BlockPos                   lowerPos    = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
     DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( lowerPos );
 
-    Dimensiown.LOGGER.info( "Dimensional Door User  : " + player.getUuid() );
-    Dimensiown.LOGGER.info( "Dimensional Door Owner : " + blockEntity.getOwner() );
+    // Prevent door opening when trying to upgrade
+    if( Objects.equals( player.getItemsHand().iterator().next().getTranslationKey(), "item.dimensiown.dimensional_enhancer" ) )
+      return ActionResult.FAIL;
 
     // Only owner can open the door
     if( !Objects.equals( blockEntity.getOwner(), player.getUuid() ) )
     {
-      player.sendSystemMessage( new LiteralText( "You can't open dimensional doors you don't own."), Util.NIL_UUID );
+      // Prevent double message from both client and server
+//      if( !world.isClient() )
+//        player.sendSystemMessage( new LiteralText( "You can only open your own dimensional doors."), Util.NIL_UUID );
+      // TODO : Fix double message
+
       return ActionResult.FAIL;
     }
 

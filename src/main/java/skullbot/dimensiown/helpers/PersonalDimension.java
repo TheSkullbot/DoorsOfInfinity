@@ -3,6 +3,8 @@ package skullbot.dimensiown.helpers;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.LiteralText;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
@@ -64,9 +66,14 @@ public class PersonalDimension
     return upgrades;
   }
 
+  public boolean canUpgrade()
+  {
+    return this.upgrades < UPGRADE_SIZE_MULTIPLIER;
+  }
+
   public boolean upgrade()
   {
-    if( this.upgrades >= UPGRADE_SIZE_MULTIPLIER )
+    if( !canUpgrade() )
       return false;
 
     int prevInnerSize = getInnerSize();
