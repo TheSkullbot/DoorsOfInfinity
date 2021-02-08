@@ -1,5 +1,6 @@
 package skullbot.dimensiown.blocks;
 
+import com.qouteall.immersive_portals.dimension_sync.DimId;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.*;
@@ -14,10 +15,8 @@ import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.*;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.BlockMirror;
-import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Hand;
+import net.minecraft.text.LiteralText;
+import net.minecraft.util.*;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -28,6 +27,7 @@ import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldAccess;
 import net.minecraft.world.WorldView;
+import skullbot.dimensiown.Dimensiown;
 import skullbot.dimensiown.blockentities.DimensionalDoorBlockEntity;
 import skullbot.dimensiown.helpers.DimensionalHelper;
 import skullbot.dimensiown.helpers.PersonalDimension;
@@ -50,28 +50,98 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
   protected static final VoxelShape                    EAST_SHAPE;
   protected static final VoxelShape                    WEST_SHAPE;
 
+  //============================================================================
+  // Block properties
+  //============================================================================
+
+  protected void appendProperties( StateManager.Builder<Block, BlockState> builder )
+  {
+    builder.add( HALF, FACING, OPEN, HINGE );
+  }
+
+  static
+  {
+    FACING      = HorizontalFacingBlock.FACING;
+    OPEN        = Properties.OPEN;
+    HINGE       = Properties.DOOR_HINGE;
+    HALF        = Properties.DOUBLE_BLOCK_HALF;
+    NORTH_SHAPE = Block.createCuboidShape( 0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 3.0D );
+    SOUTH_SHAPE = Block.createCuboidShape( 0.0D, 0.0D, 13.0D, 16.0D, 16.0D, 16.0D );
+    EAST_SHAPE  = Block.createCuboidShape( 13.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D );
+    WEST_SHAPE  = Block.createCuboidShape( 0.0D, 0.0D, 0.0D, 3.0D, 16.0D, 16.0D );
+  }
+
   public DimensionalDoorBlock( Settings settings )
   {
     super( settings );
     this.setDefaultState( this.stateManager.getDefaultState().with( FACING, Direction.NORTH ).with( OPEN, false ).with( HINGE, DoorHinge.LEFT ).with( HALF, DoubleBlockHalf.LOWER ) );
   }
 
-  public VoxelShape getOutlineShape( BlockState state, BlockView view, BlockPos pos, ShapeContext context )
+  //============================================================================
+  // Block placing
+  //============================================================================
+
+  public BlockState getPlacementState( ItemPlacementContext ctx )
   {
-    Direction direction = state.get( FACING );
-    boolean   bl        = !( state.get( OPEN ) );
-    boolean   bl2       = state.get( HINGE ) == DoorHinge.RIGHT;
-    switch( direction )
+    BlockPos blockPos = ctx.getBlockPos();
+
+    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
+
+    // Prevent door placing in same dimension
+    if( ctx.getWorld().getRegistryKey().getValue() == blockWorld.getRegistryKey().getValue() )
     {
-      case EAST:
-      default:
-        return bl ? WEST_SHAPE : ( bl2 ? SOUTH_SHAPE : NORTH_SHAPE );
-      case SOUTH:
-        return bl ? NORTH_SHAPE : ( bl2 ? WEST_SHAPE : EAST_SHAPE );
-      case WEST:
-        return bl ? EAST_SHAPE : ( bl2 ? NORTH_SHAPE : SOUTH_SHAPE );
-      case NORTH:
-        return bl ? SOUTH_SHAPE : ( bl2 ? EAST_SHAPE : WEST_SHAPE );
+      ctx.getPlayer().sendSystemMessage( new LiteralText( "You can't place dimensional doors in your personal dimension."), Util.NIL_UUID );
+      return null;
+    }
+
+    if( blockPos.getY() < 255 && ctx.getWorld().getBlockState( blockPos.up() ).canReplace( ctx ) )
+    {
+      World   world = ctx.getWorld();
+      boolean bl    = world.isReceivingRedstonePower( blockPos ) || world.isReceivingRedstonePower( blockPos.up() );
+      return this.getDefaultState().with( FACING, ctx.getPlayerFacing() ).with( HINGE, this.getHinge( ctx ) ).with( OPEN, bl ).with( HALF, DoubleBlockHalf.LOWER );
+    }
+    else
+      return null;
+  }
+
+  public void onPlaced( World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack )
+  {
+    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
+
+    world.setBlockState( pos.up(), state.with( HALF, DoubleBlockHalf.UPPER ), 3 );
+
+    if( state.get( HALF ) == DoubleBlockHalf.LOWER && !world.isClient )
+    {
+      if( itemStack != null && itemStack.getSubTag( "BlockEntity" ) != null )
+      {
+        DimensionalDoorBlockEntity blockEntity = new DimensionalDoorBlockEntity();
+        blockEntity.updateDestination();
+      }
+
+      DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
+      PersonalDimension          personalDim = blockEntity.getOrCreateLinkedDimension( placer.getUuid() );
+      blockEntity.setOwner( placer.getUuid() );
+      blockEntity.placeSyncedDoor( DimensionalHelper.getDimension(), personalDim.getPlayerPos() );
+    }
+  }
+
+  public void neighborUpdate( BlockState state, World world, BlockPos pos, Block block, BlockPos neighborPos, boolean moved )
+  {
+    pos   = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
+    state = world.getBlockState( pos );
+
+    // Prevent door placing in same dimension
+    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
+    if( world.getRegistryKey().getValue() == blockWorld.getRegistryKey().getValue() )
+      return;
+
+    DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
+
+    if( !state.isAir() && !canPlaceAt( state, world, pos ) )
+    {
+      blockEntity.deleteLocalPortal();
+      world.setBlockState( pos.up(), Blocks.AIR.getDefaultState(), 35 );
+      world.breakBlock( pos, true );
     }
   }
 
@@ -84,10 +154,62 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
       return doubleBlockHalf == DoubleBlockHalf.LOWER && facing == Direction.DOWN && !state.canPlaceAt( world, pos ) ? Blocks.AIR.getDefaultState() : super.getStateForNeighborUpdate( state, facing, neighborState, world, pos, neighborPos );
   }
 
-  public void afterBreak( World world, PlayerEntity player, BlockPos pos, BlockState state, BlockEntity blockEntity, ItemStack stack )
+  //============================================================================
+  // Block used
+  //============================================================================
+
+  @Override
+  public ActionResult onUse( BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit )
   {
-    super.afterBreak( world, player, pos, Blocks.AIR.getDefaultState(), blockEntity, stack );
+    BlockPos                   lowerPos    = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
+    DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( lowerPos );
+
+    Dimensiown.LOGGER.info( "Dimensional Door User  : " + player.getUuid() );
+    Dimensiown.LOGGER.info( "Dimensional Door Owner : " + blockEntity.getOwner() );
+
+    // Only owner can open the door
+    if( !Objects.equals( blockEntity.getOwner(), player.getUuid() ) )
+    {
+      player.sendSystemMessage( new LiteralText( "You can't open dimensional doors you don't own."), Util.NIL_UUID );
+      return ActionResult.FAIL;
+    }
+
+    state = state.cycle( OPEN );
+    world.setBlockState( pos, state, 10 );
+    world.syncWorldEvent( player, state.get( OPEN ) ? this.getCloseSoundEventId() : this.getOpenSoundEventId(), pos, 0 );
+
+    if( !world.isClient )
+      blockEntity.updateDestination();
+
+    return ActionResult.SUCCESS;
   }
+
+  //============================================================================
+  // Block Placing checks
+  //============================================================================
+
+  public boolean canPlaceAt( BlockState state, WorldView world, BlockPos pos )
+  {
+    pos = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
+    return topAndBottomMatch( pos, world ) && ( ( sideMatches( pos, world, Direction.NORTH ) && sideMatches( pos, world, Direction.SOUTH ) ) || ( sideMatches( pos, world, Direction.EAST ) && sideMatches( pos, world, Direction.WEST ) ) );
+  }
+
+  private boolean topAndBottomMatch( BlockPos pos, WorldView world )
+  {
+    Predicate<Block> matchingBlocks = ( block ) -> block == DIM_BLOCK || block == DIM_BLOCK_UNBREAKABLE;
+    return matchingBlocks.test( world.getBlockState( pos.down() ).getBlock() ) && matchingBlocks.test( world.getBlockState( pos.up( 2 ) ).getBlock() );
+  }
+
+  private boolean sideMatches( BlockPos pos, WorldView world, Direction d )
+  {
+    Predicate<Block> matchingBlocks = ( block ) -> block == DIM_BLOCK || block == DIM_BLOCK_UNBREAKABLE;
+    BlockPos         sidePos        = pos.add( d.getVector() );
+    return matchingBlocks.test( world.getBlockState( sidePos ).getBlock() ) && matchingBlocks.test( world.getBlockState( sidePos.up() ).getBlock() );
+  }
+
+  //============================================================================
+  // Block Breaking
+  //============================================================================
 
   public void onBreak( World world, BlockPos pos, BlockState state, PlayerEntity player )
   {
@@ -114,6 +236,11 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     super.onBreak( world, pos, state, player );
   }
 
+  public void afterBreak( World world, PlayerEntity player, BlockPos pos, BlockState state, BlockEntity blockEntity, ItemStack stack )
+  {
+    super.afterBreak( world, player, pos, Blocks.AIR.getDefaultState(), blockEntity, stack );
+  }
+
   @Override
   public float calcBlockBreakingDelta( BlockState state, PlayerEntity player, BlockView world, BlockPos pos )
   {
@@ -124,11 +251,9 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     return super.calcBlockBreakingDelta( state, player, world, pos );
   }
 
-  @Override
-  public boolean canPathfindThrough( BlockState world, BlockView view, BlockPos pos, NavigationType env )
-  {
-    return true;
-  }
+  //============================================================================
+  // Block sounds
+  //============================================================================
 
   private int getOpenSoundEventId()
   {
@@ -140,37 +265,34 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     return this.material == Material.METAL ? 1005 : 1006;
   }
 
-  public BlockState getPlacementState( ItemPlacementContext ctx )
-  {
-    BlockPos blockPos = ctx.getBlockPos();
+  //============================================================================
+  // Block rendering
+  //============================================================================
 
-    if( blockPos.getY() < 255 && ctx.getWorld().getBlockState( blockPos.up() ).canReplace( ctx ) )
-    {
-      World   world = ctx.getWorld();
-      boolean bl    = world.isReceivingRedstonePower( blockPos ) || world.isReceivingRedstonePower( blockPos.up() );
-      return this.getDefaultState().with( FACING, ctx.getPlayerFacing() ).with( HINGE, this.getHinge( ctx ) ).with( OPEN, bl ).with( HALF, DoubleBlockHalf.LOWER );
-    }
-    else
-      return null;
+  @Override
+  public boolean canPathfindThrough( BlockState world, BlockView view, BlockPos pos, NavigationType env )
+  {
+    return true;
   }
 
-  public void onPlaced( World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack )
+  public PistonBehavior getPistonBehavior( BlockState state )
   {
-    world.setBlockState( pos.up(), state.with( HALF, DoubleBlockHalf.UPPER ), 3 );
+    return PistonBehavior.BLOCK;
+  }
 
-    if( state.get( HALF ) == DoubleBlockHalf.LOWER && !world.isClient )
-    {
-      if( itemStack != null && itemStack.getSubTag( "BlockEntity" ) != null )
-      {
-        DimensionalDoorBlockEntity blockEntity = new DimensionalDoorBlockEntity();
-        blockEntity.updateDestination();
-      }
+  public BlockRenderType getRenderType( BlockState state )
+  {
+    return BlockRenderType.MODEL;
+  }
 
-      DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
-      PersonalDimension          personalDim = blockEntity.getOrCreateLinkedDimension( placer.getUuid() );
-      blockEntity.setOwner( placer.getUuid() );
-      blockEntity.placeSyncedDoor( DimensionalHelper.getDimension(), personalDim.getPlayerPos() );
-    }
+  public BlockState rotate( BlockState state, BlockRotation rotation )
+  {
+    return state.with( FACING, rotation.rotate( state.get( FACING ) ) );
+  }
+
+  public BlockState mirror( BlockState state, BlockMirror mirror )
+  {
+    return mirror == BlockMirror.NONE ? state : state.rotate( mirror.getRotation( state.get( FACING ) ) ).cycle( HINGE );
   }
 
   private DoorHinge getHinge( ItemPlacementContext ctx )
@@ -211,85 +333,23 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
       return DoorHinge.RIGHT;
   }
 
-  @Override
-  public ActionResult onUse( BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit )
+  public VoxelShape getOutlineShape( BlockState state, BlockView view, BlockPos pos, ShapeContext context )
   {
-    BlockPos                   lowerPos    = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
-    DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( lowerPos );
-
-    System.out.println( "Dimensional Door User  : " + player.getUuid() );
-    System.out.println( "Dimensional Door Owner : " + blockEntity.getOwner() );
-
-    // Only owner can open the door
-    if( !Objects.equals( blockEntity.getOwner(), player.getUuid() ) )
+    Direction direction = state.get( FACING );
+    boolean   bl        = !( state.get( OPEN ) );
+    boolean   bl2       = state.get( HINGE ) == DoorHinge.RIGHT;
+    switch( direction )
     {
-      System.out.println( "Unauthorized user !" );
-      return ActionResult.FAIL;
+      case EAST:
+      default:
+        return bl ? WEST_SHAPE : ( bl2 ? SOUTH_SHAPE : NORTH_SHAPE );
+      case SOUTH:
+        return bl ? NORTH_SHAPE : ( bl2 ? WEST_SHAPE : EAST_SHAPE );
+      case WEST:
+        return bl ? EAST_SHAPE : ( bl2 ? NORTH_SHAPE : SOUTH_SHAPE );
+      case NORTH:
+        return bl ? SOUTH_SHAPE : ( bl2 ? EAST_SHAPE : WEST_SHAPE );
     }
-
-    state = state.cycle( OPEN );
-    world.setBlockState( pos, state, 10 );
-    world.syncWorldEvent( player, state.get( OPEN ) ? this.getCloseSoundEventId() : this.getOpenSoundEventId(), pos, 0 );
-
-    if( !world.isClient )
-    {
-      blockEntity.updateDestination();
-    }
-
-    return ActionResult.SUCCESS;
-  }
-
-  public void neighborUpdate( BlockState state, World world, BlockPos pos, Block block, BlockPos neighborPos, boolean moved )
-  {
-    pos   = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
-    state = world.getBlockState( pos );
-
-    DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
-
-    if( !state.isAir() && !canPlaceAt( state, world, pos ) )
-    {
-      blockEntity.deleteLocalPortal();
-      world.setBlockState( pos.up(), Blocks.AIR.getDefaultState(), 35 );
-      world.breakBlock( pos, true );
-    }
-  }
-
-  public boolean canPlaceAt( BlockState state, WorldView world, BlockPos pos )
-  {
-    // Prevent door placing in same dimension
-    if( world.toString().equals( Dimensions.DIMENSION_WORLD.getValue().toString() ) )
-      return false;
-
-    pos = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
-    return topAndBottomMatch( pos, world ) && ( ( sideMatches( pos, world, Direction.NORTH ) && sideMatches( pos, world, Direction.SOUTH ) ) || ( sideMatches( pos, world, Direction.EAST ) && sideMatches( pos, world, Direction.WEST ) ) );
-  }
-
-  private boolean topAndBottomMatch( BlockPos pos, WorldView world )
-  {
-    Predicate<Block> matchingBlocks = ( block ) -> block == DIM_BLOCK || block == DIM_BLOCK_UNBREAKABLE;
-    return matchingBlocks.test( world.getBlockState( pos.down() ).getBlock() ) && matchingBlocks.test( world.getBlockState( pos.up( 2 ) ).getBlock() );
-  }
-
-  private boolean sideMatches( BlockPos pos, WorldView world, Direction d )
-  {
-    Predicate<Block> matchingBlocks = ( block ) -> block == DIM_BLOCK || block == DIM_BLOCK_UNBREAKABLE;
-    BlockPos         sidePos        = pos.add( d.getVector() );
-    return matchingBlocks.test( world.getBlockState( sidePos ).getBlock() ) && matchingBlocks.test( world.getBlockState( sidePos.up() ).getBlock() );
-  }
-
-  public PistonBehavior getPistonBehavior( BlockState state )
-  {
-    return PistonBehavior.BLOCK;
-  }
-
-  public BlockState rotate( BlockState state, BlockRotation rotation )
-  {
-    return state.with( FACING, rotation.rotate( state.get( FACING ) ) );
-  }
-
-  public BlockState mirror( BlockState state, BlockMirror mirror )
-  {
-    return mirror == BlockMirror.NONE ? state : state.rotate( mirror.getRotation( state.get( FACING ) ) ).cycle( HINGE );
   }
 
   @Environment( EnvType.CLIENT )
@@ -298,31 +358,13 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     return MathHelper.hashCode( pos.getX(), pos.down( state.get( HALF ) == DoubleBlockHalf.LOWER ? 0 : 1 ).getY(), pos.getZ() );
   }
 
-  protected void appendProperties( StateManager.Builder<Block, BlockState> builder )
-  {
-    builder.add( HALF, FACING, OPEN, HINGE );
-  }
-
-  static
-  {
-    FACING      = HorizontalFacingBlock.FACING;
-    OPEN        = Properties.OPEN;
-    HINGE       = Properties.DOOR_HINGE;
-    HALF        = Properties.DOUBLE_BLOCK_HALF;
-    NORTH_SHAPE = Block.createCuboidShape( 0.0D, 0.0D, 0.0D, 16.0D, 16.0D, 3.0D );
-    SOUTH_SHAPE = Block.createCuboidShape( 0.0D, 0.0D, 13.0D, 16.0D, 16.0D, 16.0D );
-    EAST_SHAPE  = Block.createCuboidShape( 13.0D, 0.0D, 0.0D, 16.0D, 16.0D, 16.0D );
-    WEST_SHAPE  = Block.createCuboidShape( 0.0D, 0.0D, 0.0D, 3.0D, 16.0D, 16.0D );
-  }
+  //============================================================================
+  // Block entity
+  //============================================================================
 
   @Override
   public BlockEntity createBlockEntity( BlockView view )
   {
     return new DimensionalDoorBlockEntity();
-  }
-
-  public BlockRenderType getRenderType( BlockState state )
-  {
-    return BlockRenderType.MODEL;
   }
 }

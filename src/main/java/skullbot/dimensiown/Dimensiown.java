@@ -29,3 +29,9 @@ public class Dimensiown implements ModInitializer
     Items.init();
   }
 }
+
+// DONE : FIX prevent placing doors inside void dimension
+// TODO : FIX dimension upgrade
+// TODO : Store each player dimension information in remote door
+// TODO : Prevent remote door/portal from being destroyed when source door is destroyed
+// TODO : Make so every doors from same player goes to same dimension (the first creates the room in the void dimension)
