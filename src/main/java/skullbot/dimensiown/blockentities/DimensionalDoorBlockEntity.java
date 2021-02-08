@@ -15,30 +15,53 @@ import net.minecraft.util.math.Quaternion;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import skullbot.dimensiown.Dimensiown;
+import skullbot.dimensiown.helpers.PersonalDimension;
 import skullbot.dimensiown.registry.*;
 import skullbot.dimensiown.helpers.DimensionalHelper;
-import skullbot.dimensiown.helpers.DimensionalHelper.*;
 import skullbot.dimensiown.helpers.PortalCreationHelper;
 import skullbot.dimensiown.blocks.DimensionalDoorBlock;
 import skullbot.dimensiown.utils.BoxUtils;
 
+import java.util.UUID;
+
 public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEntityClientSerializable
 {
-  public static final int MAX_UPGRADES = 4;
+  protected UUID   ownerID;
+  protected String ownerName;
 
-  public DimensionalHelper.PersonalDimension destDimension;
-  public BlockPos                            destPosition;
-  public World                               destWorld;
-  public Portal                              portal;
-  public int                                 upgrades = 0;
+  public PersonalDimension destDimension;
+  public BlockPos          destPosition;
+  public World             destWorld;
+  public Portal            portal;
+  public int               upgrades = 0;
 
   public DimensionalDoorBlockEntity()
   {
     super( BlockEntities.DIM_DOOR );
   }
 
+  public void setOwner( UUID p_owner )
+  {
+    this.ownerID   = p_owner;
+    this.ownerName = Dimensiown.SERVER.getPlayerManager().getPlayer( p_owner ).getName().asString();
+    this.sync();
+  }
+
+  public UUID getOwner()
+  {
+    return this.ownerID;
+  }
+
+  public String getOwnerName()
+  {
+    return this.ownerName;
+  }
+
   public void syncWith( DimensionalDoorBlockEntity entity )
   {
+    entity.setOwner( this.ownerID );
+    this.setOwner( entity.ownerID );
+
     entity.destPosition = this.pos;
     entity.destWorld    = this.world;
     this.destPosition   = entity.pos;
@@ -60,7 +83,6 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
         PortalManipulation.completeBiWayPortal( getSyncEntity().portal, Portal.entityType );
       }
     }
-
   }
 
   public boolean isSyncPresent()
@@ -90,7 +112,7 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     Vec3d      portalPos      = new Vec3d( pos.getX(), pos.getY(), pos.getZ() ).add( 0.5, 1, 0.5 );
     Quaternion rot            = new Quaternion( Vector3f.POSITIVE_Y, direction.getOpposite().getHorizontal() * 90, true );
 
-    PersonalDimension personalDim = getOrCreateLinkedDimension();
+    PersonalDimension personalDim = getOrCreateLinkedDimension( ownerID );
 
     deleteSyncPortal();
     portal = PortalCreationHelper.spawn( world, portalPos, 1, 2, rightDirection, Dimensions.DIMENSION_WORLD, personalDim.getPlayerPosCentered().add( 0, 1, 0 ), true, rot );
@@ -103,32 +125,8 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     destinationWorld.setBlockState( destinationPosition, Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.LOWER ) );
     destinationWorld.setBlockState( destinationPosition.up(), Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.UPPER ) );
     syncWith( (DimensionalDoorBlockEntity) destinationWorld.getBlockEntity( destinationPosition ) );
+    // TODO : Sync owner id with distant door
     createSyncedPortals();
-  }
-
-  @Override
-  public void fromClientTag( CompoundTag tag )
-  {
-    upgrades = tag.getInt( "DimensionalOffset" );
-  }
-
-  @Override
-  public CompoundTag toClientTag( CompoundTag tag )
-  {
-    tag.putInt( "DimensionalOffset", upgrades );
-    return tag;
-  }
-
-  @Override
-  public void sync()
-  {
-    markDirty();
-    BlockEntityClientSerializable.super.sync();
-  }
-
-  public void syncWithDoor()
-  {
-    syncWith( getSyncEntity() );
   }
 
   public DimensionalDoorBlockEntity getSyncEntity()
@@ -139,22 +137,70 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     return (DimensionalDoorBlockEntity) destWorld.getBlockEntity( destPosition );
   }
 
-  public PersonalDimension getOrCreateLinkedDimension()
+  public PersonalDimension getOrCreateLinkedDimension( UUID ownerID )
   {
     if( destDimension == null )
     {
-      destDimension = DimensionalHelper.getEmptyPersonalDimension();
+      destDimension = DimensionalHelper.getEmptyPersonalDimension( ownerID );
       destDimension.generate();
     }
     return destDimension;
   }
+
+  //============================================================================
+  // CLIENT TAGS
+  //============================================================================
+
+  @Override
+  public void fromClientTag( CompoundTag tag )
+  {
+    if( tag.contains( "DimensionalUpgrades" ) )
+      upgrades = tag.getInt( "DimensionalUpgrades" );
+
+    if( tag.contains( "DimensionOwner" ) )
+    {
+      ownerID   = tag.getUuid( "DimensionOwner" );
+      ownerName = tag.getString( "DimensionOwnerName" );
+    }
+  }
+
+  @Override
+  public CompoundTag toClientTag( CompoundTag tag )
+  {
+    tag.putInt( "DimensionalUpgrades", upgrades );
+
+    if( ownerID != null )
+    {
+      tag.putUuid( "DimensionOwner", ownerID );
+      tag.putString( "DimensionOwnerName", ownerName );
+    }
+
+    return tag;
+  }
+
+  @Override
+  public void sync()
+  {
+    markDirty();
+    BlockEntityClientSerializable.super.sync();
+  }
+
+  //============================================================================
+  // SERVER TAGS
+  //============================================================================
 
   @Override
   public void fromTag( BlockState state, CompoundTag tag )
   {
     super.fromTag( state, tag );
 
-    if( tag.contains( "DestinationDimId" ) )
+    if( tag.contains( "DimensionOwner" ) )
+    {
+      ownerID   = tag.getUuid( "DimensionOwner" );
+      ownerName = tag.getString( "DimensionOwnerName" );
+    }
+
+    if( tag.contains( "DestinationDimId" ) && Dimensiown.SERVER != null )
     {
       destWorld    = Dimensiown.SERVER.getWorld( DimId.idToKey( tag.getString( "DestinationDimId" ) ) );
       destPosition = new BlockPos( tag.getInt( "DestinationX" ), tag.getInt( "DestinationY" ), tag.getInt( "DestinationZ" ) );
@@ -164,13 +210,19 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
       upgrades = tag.getInt( "DimensionalUpgrades" );
 
     if( tag.contains( "DimensionalOffset" ) )
-      destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ), upgrades );
+      destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ), ownerID, upgrades );
   }
 
   @Override
   public CompoundTag toTag( CompoundTag tag )
   {
     super.toTag( tag );
+
+    if( ownerID != null )
+    {
+      tag.putUuid( "DimensionOwner", ownerID );
+      tag.putString( "DimensionOwnerName", ownerName );
+    }
 
     if( destDimension != null )
       tag.putInt( "DimensionalOffset", destDimension.getDimensionOffset() );
@@ -184,7 +236,6 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     }
 
     tag.putInt( "DimensionalUpgrades", upgrades );
-
     return tag;
   }
 }
