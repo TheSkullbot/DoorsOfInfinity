@@ -8,6 +8,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.client.util.math.Vector3f;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -105,28 +106,28 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     world.getEntitiesByClass( Portal.class, BoxUtils.getBoxInclusive( pos, pos.up() ), null ).forEach( Portal::remove );
   }
 
-  private void createSyncedPortals()
+  private void createSyncedPortals( UUID placer )
   {
-    Direction  direction      = getCachedState().get( DimensionalDoorBlock.FACING );
-    Direction  rightDirection = Direction.fromHorizontal( direction.getHorizontal() + 1 );
-    Vec3d      portalPos      = new Vec3d( pos.getX(), pos.getY(), pos.getZ() ).add( 0.5, 1, 0.5 );
-    Quaternion rot            = new Quaternion( Vector3f.POSITIVE_Y, direction.getOpposite().getHorizontal() * 90, true );
-
-    PersonalDimension personalDim = getOrCreateLinkedDimension( ownerID );
+    PersonalDimension personalDim            = getOrCreateLinkedDimension( placer );
+    Direction         direction              = getCachedState().get( DimensionalDoorBlock.FACING );
+    Vec3d             localPortalPosition    = new Vec3d( pos.getX(), pos.getY(), pos.getZ() ).add( 0.5, 1, 0.5 );
+    Vec3d             localPortalDestination = personalDim.getDoorPosition().add( 0.5, 1, 0.5 );
+    Direction         localPortalDirection   = Direction.fromHorizontal( direction.getHorizontal() + 1 );
+    Quaternion        localPortalRotation    = new Quaternion( Vector3f.POSITIVE_Y, direction.getOpposite().getHorizontal() * 90, true );
 
     deleteSyncPortal();
-    portal = PortalCreationHelper.spawn( world, portalPos, 1, 2, rightDirection, Dimensions.DIMENSION_WORLD, personalDim.getPlayerPosCentered().add( 0, 1, 0 ), true, rot );
+    portal = PortalCreationHelper.spawn( world, localPortalPosition, 1, 2, localPortalDirection, Dimensions.DIMENSION_WORLD, localPortalDestination, true, localPortalRotation );
     updateDestination();
   }
 
   public void placeSyncedDoor( World destinationWorld, BlockPos destinationPosition )
   {
     BlockState state = getCachedState();
-    destinationWorld.setBlockState( destinationPosition, Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.LOWER ) );
-    destinationWorld.setBlockState( destinationPosition.up(), Blocks.DIM_DOOR.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.UPPER ) );
-    syncWith( (DimensionalDoorBlockEntity) destinationWorld.getBlockEntity( destinationPosition ) );
-    // TODO : Sync owner id with distant door
-    createSyncedPortals();
+    destinationWorld.setBlockState( destinationPosition,      Blocks.DIM_DOOR_UNBREAKABLE.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.LOWER ) );
+    destinationWorld.setBlockState( destinationPosition.up(), Blocks.DIM_DOOR_UNBREAKABLE.getDefaultState().with( DimensionalDoorBlock.HINGE, state.get( DimensionalDoorBlock.HINGE ) ).with( DimensionalDoorBlock.FACING, Direction.NORTH ).with( DimensionalDoorBlock.HALF, DoubleBlockHalf.UPPER ) );
+    DimensionalDoorBlockEntity entity = (DimensionalDoorBlockEntity) destinationWorld.getBlockEntity( destinationPosition );
+    syncWith( entity );
+    createSyncedPortals( entity.getOwner() );
   }
 
   public DimensionalDoorBlockEntity getSyncEntity()
@@ -137,13 +138,11 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
     return (DimensionalDoorBlockEntity) destWorld.getBlockEntity( destPosition );
   }
 
-  public PersonalDimension getOrCreateLinkedDimension( UUID ownerID )
+  public PersonalDimension getOrCreateLinkedDimension( UUID placer )
   {
     if( destDimension == null )
-    {
-      destDimension = DimensionalHelper.getEmptyPersonalDimension( ownerID );
-      destDimension.generate();
-    }
+      destDimension = DimensionalHelper.getEmptyPersonalDimension( placer );
+
     return destDimension;
   }
 
@@ -210,7 +209,7 @@ public class DimensionalDoorBlockEntity extends BlockEntity implements BlockEnti
       upgrades = tag.getInt( "DimensionalUpgrades" );
 
     if( tag.contains( "DimensionalOffset" ) )
-      destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ), ownerID, upgrades );
+      destDimension = DimensionalHelper.getPersonalDimension( tag.getInt( "DimensionalOffset" ) );
   }
 
   @Override

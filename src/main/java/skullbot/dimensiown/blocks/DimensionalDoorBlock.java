@@ -122,7 +122,7 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
       DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
       PersonalDimension          personalDim = blockEntity.getOrCreateLinkedDimension( placer.getUuid() );
       blockEntity.setOwner( placer.getUuid() );
-      blockEntity.placeSyncedDoor( DimensionalHelper.getDimension(), personalDim.getPlayerPos() );
+      blockEntity.placeSyncedDoor( DimensionalHelper.getDimension(), personalDim.getDoorBlockPosition() );
     }
   }
 
@@ -219,6 +219,9 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
 
   public void onBreak( World world, BlockPos pos, BlockState state, PlayerEntity player )
   {
+    if( world.getRegistryKey() == Dimensions.DIMENSION_WORLD )
+      return;
+
     BlockPos                   lowerPos         = state.get( HALF ) == DoubleBlockHalf.LOWER ? pos : pos.down();
     BlockState                 lowerBlockState  = world.getBlockState( lowerPos );
     DoubleBlockHalf            doubleBlockHalf  = state.get( HALF );

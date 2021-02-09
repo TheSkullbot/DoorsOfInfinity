@@ -14,7 +14,7 @@ public class Blocks
   public static Block DIM_BLOCK             = new Block( FabricBlockSettings.copy( net.minecraft.block.Blocks.OBSIDIAN ).build() );
 
   public static DimensionalDoorBlock DIM_DOOR_UNBREAKABLE = new DimensionalDoorBlock( FabricBlockSettings.copy( net.minecraft.block.Blocks.IRON_DOOR ).strength( -1.0F, 3600000.0F ).sounds( BlockSoundGroup.STONE ).build() );
-  public static DimensionalDoorBlock DIM_DOOR             = new DimensionalDoorBlock( FabricBlockSettings.copy( net.minecraft.block.Blocks.IRON_DOOR ).sounds( BlockSoundGroup.STONE ).build() );
+  public static DimensionalDoorBlock DIM_DOOR             = new DimensionalDoorBlock( FabricBlockSettings.copy( net.minecraft.block.Blocks.IRON_DOOR ).strength( 50.0F, 3600000.0F ).sounds( BlockSoundGroup.STONE ).build() );
 
   public static void init()
   {

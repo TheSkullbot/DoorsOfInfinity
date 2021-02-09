@@ -35,12 +35,12 @@ public class DimensionalEnhancer extends Item
         context.getPlayer().sendSystemMessage( new LiteralText( "You can only upgrade your own dimension." ), Util.NIL_UUID );
         return ActionResult.FAIL;
       }
-      else if( !blockEntity.getOrCreateLinkedDimension( blockEntity.getOwner() ).canUpgrade() )
+      else if( !blockEntity.getOrCreateLinkedDimension( context.getPlayer().getUuid() ).canUpgrade() )
       {
         context.getPlayer().sendSystemMessage( new LiteralText( "You can't upgrade your dimension further." ), Util.NIL_UUID );
         return ActionResult.FAIL;
       }
-      else if( blockEntity.getOrCreateLinkedDimension( blockEntity.getOwner() ).upgrade() )
+      else if( blockEntity.getOrCreateLinkedDimension( context.getPlayer().getUuid() ).upgrade() )
       {
         context.getPlayer().getMainHandStack().decrement( 1 );
         return ActionResult.SUCCESS;

@@ -3,14 +3,11 @@ package skullbot.dimensiown.helpers;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.LiteralText;
-import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import skullbot.dimensiown.blockentities.DimensionalDoorBlockEntity;
 
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
 
@@ -18,57 +15,60 @@ import static skullbot.dimensiown.registry.Blocks.DIM_BLOCK_UNBREAKABLE;
 
 public class PersonalDimension
 {
+  public static final int HEIGHT                  = 64;
   public static final int SPACING                 = 150;
   public static final int INNER_SIZE              = 5;
-  public static final int WALL_THICKNESS          = 1;
+  public static final int WALL_THICKNESS          = 2;
   public static final int UPGRADE_SIZE_MULTIPLIER = 2;
 
-  private UUID        owner;
-  private ServerWorld world;
-  private int         dimOffset;
-  private int         upgrades = 0;
+  private final ServerWorld world;
+  private final int         offset;
+  private       int         level = 0;
 
-  public PersonalDimension( int dimOffset, UUID owner, int upgrades, ServerWorld world )
+  public PersonalDimension( int offset, ServerWorld world )
   {
-    this( dimOffset, owner, world );
-    this.upgrades = upgrades;
+    this.offset = offset;
+    this.world  = world;
   }
 
-  public PersonalDimension( int dimOffset, UUID owner, ServerWorld world )
+  public Vec3d getDoorPosition()
   {
-    this.dimOffset = dimOffset;
-    this.world     = world;
-    this.owner     = owner;
+    return new Vec3d( SPACING * offset, HEIGHT + WALL_THICKNESS, -(WALL_THICKNESS / 2.0f) );
   }
 
-  public Vec3d getBasePosition()
+  public BlockPos getDoorBlockPosition()
   {
-    return new Vec3d( SPACING * dimOffset, WALL_THICKNESS, 0 );
+    return new BlockPos( getDoorPosition() );
+  }
+
+  public Vec3d getCubeOrigin()
+  {
+    return new Vec3d( Math.floor( ( SPACING * offset ) - ( getInnerSize() / 2.0f ) - Math.floor( WALL_THICKNESS / 2.0f ) ), HEIGHT, 0 );
   }
 
   public int getDimensionOffset()
   {
-    return dimOffset;
+    return offset;
   }
 
-  public Vec3d getPlayerPosCentered()
+  public Vec3d getPortalPosition()
   {
-    return new Vec3d( getPlayerPos().getX(), getPlayerPos().getY(), getPlayerPos().getZ() ).add( 0.5, 0, 0.5 );
+    return new Vec3d( getDoorPosition().getX(), getDoorPosition().getY(), getDoorPosition().getZ() ).add( 0.5, 1, 0.5 );
   }
 
   public int getInnerSize()
   {
-    return INNER_SIZE + getUpgrades() * UPGRADE_SIZE_MULTIPLIER;
+    return INNER_SIZE + ( getUpgrades() * UPGRADE_SIZE_MULTIPLIER * INNER_SIZE );
   }
 
   public int getUpgrades()
   {
-    return upgrades;
+    return level;
   }
 
   public boolean canUpgrade()
   {
-    return this.upgrades < UPGRADE_SIZE_MULTIPLIER;
+    return this.level < UPGRADE_SIZE_MULTIPLIER;
   }
 
   public boolean upgrade()
@@ -76,58 +76,42 @@ public class PersonalDimension
     if( !canUpgrade() )
       return false;
 
-    int prevInnerSize = getInnerSize();
-
+    // TODO : Check if needed because door shouldn't change position
+    // Remove portals
     DimensionalDoorBlockEntity linkedBlockEntity = getBlockEntity().getSyncEntity();
-
     linkedBlockEntity.deleteLocalPortal();
     linkedBlockEntity.deleteSyncPortal();
 
+    // Replace previous cube with air
+    generateCube( getCubeOrigin(), getInnerSize(), WALL_THICKNESS, vec -> vec.getY() >= WALL_THICKNESS ? Blocks.AIR.getDefaultState() : DIM_BLOCK_UNBREAKABLE.getDefaultState() );
+
+    // Upgrade dimension
     linkedBlockEntity.upgrades++;
-    upgrades = linkedBlockEntity.upgrades;
+    level = linkedBlockEntity.upgrades;
 
-    generateCube( getBasePosition(), prevInnerSize, WALL_THICKNESS, vec ->
-    {
-      if( vec.getY() >= WALL_THICKNESS )
-        return Blocks.AIR.getDefaultState();
-      else
-        return DIM_BLOCK_UNBREAKABLE.getDefaultState();
-    } );
+    // Replace new cube with dimensional block
+    generateCube( getCubeOrigin(), getInnerSize(), WALL_THICKNESS, vec -> DIM_BLOCK_UNBREAKABLE.getDefaultState() );
 
-
-    generateCube( getBasePosition(), getInnerSize(), WALL_THICKNESS, vec ->
-    {
-      if( vec.getY() >= WALL_THICKNESS )
-        return DIM_BLOCK_UNBREAKABLE.getDefaultState();
-      else
-        return DIM_BLOCK_UNBREAKABLE.getDefaultState();
-    } );
-
-    linkedBlockEntity.placeSyncedDoor( world, getPlayerPos() );
+    // Place the door
+    linkedBlockEntity.placeSyncedDoor( world, getDoorBlockPosition() );
     return true;
   }
 
   private DimensionalDoorBlockEntity getBlockEntity()
   {
-    return (DimensionalDoorBlockEntity) world.getBlockEntity( getPlayerPos() );
-  }
-
-  public BlockPos getPlayerPos()
-  {
-    return new BlockPos( getBasePosition().add( Math.floor( getInnerSize() / 2.0f ) + WALL_THICKNESS, WALL_THICKNESS, getInnerSize() + WALL_THICKNESS ) );
+    return (DimensionalDoorBlockEntity) world.getBlockEntity( getDoorBlockPosition() );
   }
 
   public void generate()
   {
-    generateCube( getBasePosition(), getInnerSize(), WALL_THICKNESS, vec -> DIM_BLOCK_UNBREAKABLE.getDefaultState() );
+    generateCube( getCubeOrigin(), getInnerSize(), WALL_THICKNESS, vec -> DIM_BLOCK_UNBREAKABLE.getDefaultState() );
     resetDoor();
   }
 
   private void resetDoor()
   {
-    BlockPos spawnPos = getPlayerPos();
-    world.setBlockState( spawnPos, Blocks.AIR.getDefaultState() );
-    world.setBlockState( spawnPos.up(), Blocks.AIR.getDefaultState() );
+    world.setBlockState( getDoorBlockPosition(),      Blocks.AIR.getDefaultState() );
+    world.setBlockState( getDoorBlockPosition().up(), Blocks.AIR.getDefaultState() );
   }
 
   public void generateCube( Vec3d basePosition, int innerSize, int wallThickness, Function<Vec3i, BlockState> stateFunction )
@@ -138,7 +122,7 @@ public class PersonalDimension
       {
         for( int k = 0; k < innerSize + wallThickness * 2; k++ )
         {
-          BlockPos     pos     = new BlockPos( basePosition.x + i, basePosition.y + j, basePosition.z + k );
+          BlockPos     pos     = new BlockPos( basePosition.x + i, basePosition.y + j, -(basePosition.z + k) );
           IntPredicate allowed = ( a ) -> a <= wallThickness - 1 || a >= innerSize + wallThickness;
           if( allowed.test( i ) || allowed.test( j ) || allowed.test( k ) )
           {
