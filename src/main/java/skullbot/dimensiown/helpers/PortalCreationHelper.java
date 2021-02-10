@@ -42,7 +42,10 @@ public class PortalCreationHelper
 
   public static Portal spawn( World world, Vec3d pos, double width, double height, Direction axisW, RegistryKey<World> dimensionTo, Vec3d dest, boolean teleportable, Quaternion rot )
   {
-    return spawn( world, pos, width, height, axisW.getUnitVector(), Direction.UP.getUnitVector(), dimensionTo, dest, teleportable, rot, true );
+    Vector3f w = new Vector3f((float)axisW.getOffsetX(), (float)axisW.getOffsetY(), (float)axisW.getOffsetZ());
+    Vector3f u = new Vector3f((float)Direction.UP.getOffsetX(), (float)Direction.UP.getOffsetY(), (float)Direction.UP.getOffsetZ());
+
+    return spawn( world, pos, width, height, w, u, dimensionTo, dest, teleportable, rot, true );
   }
 
 }

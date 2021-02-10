@@ -76,7 +76,6 @@ public class PersonalDimension
     if( !canUpgrade() )
       return false;
 
-    // TODO : Check if needed because door shouldn't change position
     // Remove portals
     DimensionalDoorBlockEntity linkedBlockEntity = getBlockEntity().getSyncEntity();
     linkedBlockEntity.deleteLocalPortal();

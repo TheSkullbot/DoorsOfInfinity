@@ -85,14 +85,12 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
   {
     BlockPos blockPos = ctx.getBlockPos();
 
-    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
-
-    // Prevent door placing in same dimension
-    if( ctx.getWorld().getRegistryKey().getValue() == blockWorld.getRegistryKey().getValue() )
+    // Prevent door placing in anything else than overworld
+    if( ctx.getWorld().getRegistryKey().getValue() != World.OVERWORLD.getValue() )
     {
       // Prevent double message from both client and server
       if( !ctx.getWorld().isClient() )
-        ctx.getPlayer().sendSystemMessage( new LiteralText( "You can't place dimensional doors in this dimension."), Util.NIL_UUID );
+        ctx.getPlayer().sendSystemMessage( new LiteralText( "You can only place dimensional doors in the overworld."), Util.NIL_UUID );
 
       return null;
     }
@@ -132,8 +130,7 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     state = world.getBlockState( pos );
 
     // Prevent door placing in same dimension
-    World blockWorld = Dimensiown.SERVER.getWorld( DimId.idToKey( Dimensions.DIMENSION_WORLD.getValue() ) );
-    if( world.getRegistryKey().getValue() == blockWorld.getRegistryKey().getValue() )
+    if( world.getRegistryKey().getValue() == Dimensions.DIMENSION_WORLD.getValue() )
       return;
 
     DimensionalDoorBlockEntity blockEntity = (DimensionalDoorBlockEntity) world.getBlockEntity( pos );
