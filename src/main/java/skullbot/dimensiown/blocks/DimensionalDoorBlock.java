@@ -170,9 +170,8 @@ public class DimensionalDoorBlock extends Block implements BlockEntityProvider
     if( !Objects.equals( blockEntity.getOwner(), player.getUuid() ) )
     {
       // Prevent double message from both client and server
-//      if( !world.isClient() )
-//        player.sendSystemMessage( new LiteralText( "You can only open your own dimensional doors."), Util.NIL_UUID );
-      // TODO : Fix double message
+      if( !world.isClient() && hand.name().equals( "MAIN_HAND" ) )
+        player.sendSystemMessage( new LiteralText( "You can only open your own dimensional doors."), Util.NIL_UUID );
 
       return ActionResult.FAIL;
     }

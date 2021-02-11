@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
 import skullbot.dimensiown.registry.*;
+import skullbot.dimensiown.stores.PlayerDimensionManager;
 
 public class Dimensiown implements ModInitializer
 {
@@ -23,12 +24,19 @@ public class Dimensiown implements ModInitializer
   {
     ServerLifecycleEvents.SERVER_STARTING.register( server -> SERVER = server );
 
+    PlayerDimensionManager.init();
+
     Entities.init();
     Blocks.init();
     BlockEntities.init();
     Items.init();
   }
+
+  public static void log( String message )
+  {
+    LOGGER.info( MARKER, message );
+  }
 }
 
 // TODO : FIX Ownership message spam
-// TODO : Find a way to remove
+// TODO : Find a way to save the dimension offset and upgrade level to player data

@@ -11,14 +11,16 @@
   "icon"          : "assets/dimensiown/icon.png",
   "environment"   : "*",
   "entrypoints"   : {
-    "main" : [
+    "main"   : [
       "skullbot.dimensiown.Dimensiown"
     ],
-    "client": [
+    "client" : [
       "skullbot.dimensiown.DimensiownClient"
     ]
   },
-  "mixins"        : [],
+  "mixins"        : [
+    "dimensiown.mixins.json"
+  ],
   "depends"       : {
     "fabricloader" : ">=0.11.1",
     "fabric"       : "*",
