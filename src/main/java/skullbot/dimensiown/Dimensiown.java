@@ -37,6 +37,3 @@ public class Dimensiown implements ModInitializer
     LOGGER.info( MARKER, message );
   }
 }
-
-// TODO : FIX Ownership message spam
-// TODO : Find a way to save the dimension offset and upgrade level to player data
